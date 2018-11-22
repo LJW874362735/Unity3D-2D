@@ -1,0 +1,75 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Enemy : MonoBehaviour {
+
+    public float m_liveTime = 1.0f;//z子弹生存时间
+    public float m_speed = 1.0f;//速度
+    public float m_life = 10;//生命
+    protected float m_rotSpeed = 30;//旋转速度
+    internal Renderer m_renderer;//模型渲染组件
+    internal bool m_isActiv = false;//是否被激活即是否进入过屏幕
+    protected Transform m_transform;
+    // Use this for initialization
+    void Start () {
+        m_transform = this.transform;
+        /***************************一定要有这句
+         *不然会报错：NullReferenceException: Object reference not set to an instance of an object
+         * 即NullReferenceException:对象引用未设置为对象的实例
+         * 
+         *  m_renderer = this.GetComponent<Renderer>()，this指的是本脚本绑定的游戏体Enemy，
+         *  这句话就是将Renderer m_renderer对象的引用指向Enemy实体的渲染组件
+         * 
+         * *****************************/
+        m_renderer = this.GetComponent<Renderer>();//获得Enemy的渲染组件
+    }
+
+    // Update is called once per frame
+    void Update () {
+        UpdateMove();
+       if (m_isActiv && !this.m_renderer.isVisible)//已标记进入了屏幕 && 模型不可见 则销毁本游戏体
+        {
+            Invoke("DestroyMe", m_liveTime);//销毁
+        }
+	}
+
+    protected virtual void UpdateMove()
+    {
+        //左右移动
+        float rx = Mathf.Sin(Time.time) * Time.deltaTime;
+        //前进
+        m_transform.Translate(new Vector3(rx, 0, -m_speed * Time.deltaTime));
+    }
+
+    private void OnBecameVisible()//当模型进入屏幕
+    {
+        m_isActiv = true;//标记为已进入
+    }
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.tag.CompareTo("PlayerBullet")==0)//如果敌人撞到player的子弹，敌人受伤，PlayerBullet是子弹绑定的Tag名
+        {
+            Bullet bullet = other.GetComponent<Bullet>();//获得子弹上的Bullet脚本
+            if (bullet != null) 
+            {
+                m_life -= bullet.m_power;//减少生命吗，bullet.m_power为子弹的威力
+                if (m_life <= 0)//敌人被子弹打gg了，或撞到了Player同归于尽
+                {
+                    Destroy(this.gameObject);//销毁本脚本控制的游戏体enemy
+                }
+            }
+        }else if(other.tag.CompareTo("Player")==0)//如果敌人撞到的是Player，Enemy直接死翘翘
+        {
+            m_life = 0;//Enemy生命值为0
+            Destroy(this.gameObject);//销毁本脚本控制的游戏体,即enemy
+        }
+    }
+
+    void DestroyMe()
+    {
+        //销毁场景里的Tag为Enemy的对象
+        Destroy(GameObject.FindGameObjectWithTag("Enemy"), m_liveTime);
+    }
+}
